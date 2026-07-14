@@ -9,6 +9,9 @@ const ROOT = join(__dirname, '..');
 
 const CID = process.env.NAVER_CLIENT_ID;
 const SECRET = process.env.NAVER_CLIENT_SECRET;
+const TG_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const TG_CHAT = process.env.TELEGRAM_CHAT_ID;
+const SITE_URL = process.env.SITE_URL || 'https://friscomike94.github.io/realestate-news-dashboard/';
 
 // ---------------- config ----------------
 const RSS_FEEDS = [
@@ -200,6 +203,32 @@ async function main(){
   await writeFile(join(ROOT, 'data', 'latest.json'), JSON.stringify(snap, null, 2));
 
   console.log(`Done. ${arts.length} articles, ${sources.length} sources. Sentiment ${slabel} (${net}%p). Surge: ${surge.k}.`);
+
+  // ---- Telegram daily briefing ----
+  if (TG_TOKEN && TG_CHAT) {
+    const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const dateLabel = new Date(payload.meta.generated).toLocaleString('ko-KR', { timeZone:'Asia/Seoul', month:'long', day:'numeric', hour:'2-digit', minute:'2-digit' });
+    const lines = [];
+    lines.push(`\uD83C\uDFE0 <b>\uBD80\uB3D9\uC0B0 \uB274\uC2A4 \uBE0C\uB9AC\uD551</b> \u00B7 ${esc(dateLabel)}`);
+    lines.push('');
+    lines.push(`\uD83D\uDCCA \uC2DC\uC7A5\uC2EC\uB9AC: <b>${esc(slabel)}</b> (\uC21C\uC2EC\uB9AC ${net>0?'+':''}${net}%p)`);
+    lines.push(`\uD83D\uDD3A \uAE09\uB4F1 \uC2DC\uADF8\uB110: <b>${esc(surge.k)}</b> +${surge.dpp}%p`);
+    lines.push(`\uD83D\uDCF0 ${arts.length}\uAC74 \u00B7 ${sources.length}\uAC1C \uB9E4\uCCB4 \uC218\uC9D1`);
+    lines.push('');
+    lines.push('<b>\uD83D\uDCCC \uC624\uB298 \uAF2D \uBCFC 5\uAC74</b>');
+    top5F.forEach((t,i) => { lines.push(`${i+1}. (${t.cov}\uAC1C \uB9E4\uCCB4) ${esc(t.t)}`); });
+    lines.push('');
+    lines.push(`\uD83D\uDD17 <a href="${SITE_URL}">\uB300\uC2DC\uBCF4\uB4DC \uC5F4\uAE30</a>`);
+    const text = lines.join('\n');
+    try {
+      const r = await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ chat_id: TG_CHAT, text, parse_mode:'HTML', disable_web_page_preview:false })
+      });
+      const j = await r.json();
+      console.log('Telegram:', j.ok ? 'sent' : 'FAILED ' + j.description);
+    } catch (e) { console.error('Telegram error:', e.message); }
+  }
 }
 
 main().catch(e => { console.error(e); process.exit(1); });
