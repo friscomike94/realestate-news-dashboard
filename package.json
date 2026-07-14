@@ -1,0 +1,10 @@
+{
+  "name": "realestate-news-dashboard",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Korean real estate news insight dashboard - auto-crawled daily",
+  "scripts": {
+    "build": "node scripts/build.mjs"
+  }
+}
